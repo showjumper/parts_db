@@ -392,7 +392,7 @@ function ensureCurrentProject_(){
 async function loadParts(){
   $('list').innerHTML = '<div class="loading">Открываем гараж…</div>';
   try{
-    const res = await fetch(SCRIPT_URL, {method:'GET'});
+    const res = await fetch(SCRIPT_URL, {method:'GET', cache:'no-store'});
     if(!res.ok){
       let txt = '';
       try{ txt = await res.text(); }catch(e2){}
@@ -404,6 +404,7 @@ async function loadParts(){
     ensureCurrentProject_();
     loadError = false;
     lastErrorDetail = '';
+    dataLoadedOk = true;
   }catch(e){
     console.error('Load error', e);
     parts = [];
@@ -411,15 +412,21 @@ async function loadParts(){
     currentProject = '';
     loadError = true;
     lastErrorDetail = (e && e.message) ? e.message : String(e);
+    dataLoadedOk = false;
   }
   render();
   updateMenuLabels();
 }
 
 async function saveParts(){
+  if(!dataLoadedOk){
+    console.error('Storage error', new Error('Refused to save: local data was never confirmed loaded from server — saving now would risk wiping real data.'));
+    return false;
+  }
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
+      cache:'no-store',
       headers: {'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ parts, projects })
     });
@@ -535,7 +542,20 @@ function matchesFilterSearch(p){
   return true;
 }
 
+let dataLoadedOk = false;
+
 function render(){
+  if(loadError){
+    $('projectRow').innerHTML = '';
+    $('statTotal').textContent='0'; $('statPct').textContent='0%';
+    $('statSpentUSD').textContent='$0'; $('statSpentEUR').textContent='€0';
+    $('gauge').innerHTML=''; $('filters').innerHTML='';
+    $('list').innerHTML = `<div class="empty"><div class="display">Не загрузилось</div>Не удалось получить данные из таблицы. Ничего локально не менялось и не терялось — просто попробуй снова.<div class="mono" style="font-size:10.5px; color:var(--text-faint); margin-top:8px; word-break:break-all;">${escapeHtml(lastErrorDetail)}</div><button class="btn btn-ghost" id="retryLoadBtn" style="margin-top:14px; max-width:160px; margin-left:auto; margin-right:auto;">Повторить</button></div>`;
+    const rb = document.getElementById('retryLoadBtn');
+    if(rb) rb.addEventListener('click', loadParts);
+    return;
+  }
+
   buildProjectSelector();
 
   const { list: projList } = getProjectList();
@@ -595,12 +615,6 @@ function render(){
   const listEl = $('list');
 
   if(individual.length===0 && clustersToShow.length===0){
-    if(loadError){
-      listEl.innerHTML = `<div class="empty"><div class="display">Не загрузилось</div>Не удалось получить данные из таблицы.<div class="mono" style="font-size:10.5px; color:var(--text-faint); margin-top:8px; word-break:break-all;">${escapeHtml(lastErrorDetail)}</div><button class="btn btn-ghost" id="retryLoadBtn" style="margin-top:14px; max-width:160px; margin-left:auto; margin-right:auto;">Повторить</button></div>`;
-      const rb = document.getElementById('retryLoadBtn');
-      if(rb) rb.addEventListener('click', loadParts);
-      return;
-    }
     listEl.innerHTML = `<div class="empty"><div class="display">Пусто</div>Добавь первую деталь кнопкой «+»</div>`;
     return;
   }
