@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Гараж — Учёт запчастей</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15130f;
+    --bg-card:#201c15;
+    --bg-card-hi:#28221a;
+    --border:#3a3227;
+    --border-hi:#4d4230;
+    --text:#ece6d6;
+    --text-dim:#9c9483;
+    --text-faint:#6b6455;
+    --rust:#b5502a;
+    --rust-hi:#cf6438;
+    --brass:#c99a3d;
+    --steel:#5b7c8d;
+    --violet:#8a6fa8;
+    --moss:#7d9463;
+    --green:#5c8a4a;
+    --danger:#b23a2e;
+    --muted:#6b6558;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;}
+  body{
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(181,80,42,0.08), transparent 40%),
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 4px);
+    padding-bottom:100px;
+  }
+  .display{font-family:'Oswald',sans-serif; text-transform:uppercase;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(180deg, #15130f 80%, rgba(21,19,15,0));
+    padding:12px 16px 8px;
+    border-bottom:1px solid var(--border);
+  }
+  .title-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .title-row h1{font-size:19px; letter-spacing:0.5px; margin:0; font-weight:700; color:var(--text);}
+  .title-row h1 span{color:var(--rust-hi);}
+  .icon-btn{
+    background:var(--bg-card); border:1px solid var(--border); color:var(--text-dim);
+    width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    font-size:15px; cursor:pointer;
+  }
+  .icon-btn:active{background:var(--bg-card-hi);}
+
+  .project-row{display:flex; gap:6px; overflow-x:auto; margin-top:9px; scrollbar-width:none;}
+  .project-row::-webkit-scrollbar{display:none;}
+  .chip.project-chip{font-weight:600;}
+  .chip.project-chip.active{background:var(--brass); border-color:var(--brass); color:#1a1610;}
+  .chip.add-chip{border-style:dashed; color:var(--text-faint); background:transparent;}
+
+  .stats-row{display:flex; align-items:baseline; gap:0; margin-top:8px; overflow-x:auto; scrollbar-width:none;}
+  .stats-row::-webkit-scrollbar{display:none;}
+  .stat{display:flex; align-items:baseline; gap:4px; padding-right:12px; margin-right:12px; border-right:1px solid var(--border); white-space:nowrap; flex:0 0 auto;}
+  .stat:last-child{border-right:none; margin-right:0; padding-right:0;}
+  .stat .n{font-family:'Oswald',sans-serif; font-size:14.5px; font-weight:600; color:var(--brass); line-height:1;}
+  .stat .l{font-size:9px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.4px;}
+
+  .gauge{margin-top:7px; height:4px; border-radius:3px; overflow:hidden; display:flex; background:#0f0d0a; border:1px solid var(--border);}
+  .gauge div{height:100%;}
+
+  .filters{display:flex; gap:6px; overflow-x:auto; padding:12px 16px 4px; scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; padding:6px 12px; border-radius:20px; border:1px solid var(--border);
+    background:var(--bg-card); color:var(--text-dim); font-size:12.5px; white-space:nowrap; cursor:pointer; font-weight:500;
+  }
+  .chip.active{background:var(--rust); border-color:var(--rust); color:#fff;}
+
+  .searchwrap{padding:6px 16px 10px;}
+  .searchwrap input{
+    width:100%; background:var(--bg-card); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:8px; font-size:14px; font-family:'Inter',sans-serif;
+  }
+  .searchwrap input::placeholder{color:var(--text-faint);}
+
+  main{padding:6px 16px 20px;}
+  .empty{text-align:center; padding:60px 20px; color:var(--text-faint);}
+  .empty .display{font-size:16px; color:var(--text-dim); margin-bottom:6px;}
+  .empty .btn{margin-top:16px; max-width:200px; margin-left:auto; margin-right:auto; display:block;}
+
+  .card{
+    position:relative; background:var(--bg-card); border:1px solid var(--border);
+    border-left:3px dashed var(--border-hi); border-radius:var(--radius);
+    padding:13px 14px 13px 20px; margin-bottom:10px; cursor:pointer;
+  }
+  .card:active{background:var(--bg-card-hi);}
+  .card.rejected{opacity:0.5;}
+  .card.rejected .card-name{text-decoration:line-through;}
+  .card::before{
+    content:''; position:absolute; left:-3px; top:16px; width:9px; height:9px; border-radius:50%;
+    background:var(--bg); border:1px solid var(--border-hi);
+  }
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card-name{font-size:15px; font-weight:600; color:var(--text); line-height:1.3;}
+  .card-cat{font-size:11px; color:var(--text-faint); margin-top:2px; text-transform:uppercase; letter-spacing:0.4px;}
+  .stamp{
+    flex:0 0 auto; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+    padding:4px 8px; border-radius:4px; border:1.5px solid; transform:rotate(-2deg); white-space:nowrap;
+  }
+  .card-bottom{display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;}
+  .card-meta{font-size:11.5px; color:var(--text-dim); display:flex; gap:10px; flex-wrap:wrap;}
+  .card-price{font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--brass); font-weight:600;}
+  .card-notes{font-size:12px; color:var(--text-faint); margin-top:6px; font-style:italic;}
+
+  .cluster{border:1px solid var(--border-hi); border-radius:var(--radius); margin-bottom:14px; overflow:hidden; background:linear-gradient(180deg, rgba(201,154,61,0.06), transparent 45%);}
+  .cluster-head{
+    display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.4px; color:var(--brass);
+    border-bottom:1px dashed var(--border-hi); background:rgba(201,154,61,0.08);
+  }
+  .cluster-count{margin-left:auto; font-weight:500; color:var(--text-faint); text-transform:none; letter-spacing:0; font-size:11px;}
+  .candidate{padding:11px 14px; border-bottom:1px solid var(--border); cursor:pointer;}
+  .candidate:last-child{border-bottom:none;}
+  .candidate:active{background:var(--bg-card-hi);}
+  .candidate.rejected{opacity:0.5;}
+  .candidate.rejected .candidate-name{text-decoration:line-through;}
+  .candidate-top{display:flex; justify-content:space-between; gap:8px; align-items:flex-start;}
+  .candidate-name{font-size:14px; font-weight:600;}
+  .candidate-meta{font-size:11.5px; color:var(--text-dim); margin-top:3px; display:flex; gap:8px; flex-wrap:wrap;}
+  .candidate-bottom{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+  .pick-btn{background:var(--rust); color:#fff; border:none; padding:6px 12px; border-radius:7px; font-size:11px; font-weight:700; cursor:pointer;}
+  .pick-btn:active{background:var(--rust-hi);}
+
+  .url-link{color:var(--brass); text-decoration:underline; font-size:11.5px;}
+  .url-link:active{color:var(--rust-hi);}
+
+  .fab{
+    position:fixed; right:18px; bottom:22px; z-index:30; width:56px; height:56px; border-radius:50%;
+    background:var(--rust); color:#fff; border:none; font-size:26px; box-shadow:0 6px 18px rgba(181,80,42,0.4);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .fab:active{background:var(--rust-hi);}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:40; display:none; align-items:flex-end;}
+  .overlay.show{display:flex;}
+  .sheet{
+    background:var(--bg-card); width:100%; max-height:88vh; overflow-y:auto;
+    border-radius:16px 16px 0 0; border-top:1px solid var(--border-hi);
+    padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet-handle{width:36px; height:4px; background:var(--border-hi); border-radius:3px; margin:0 auto 14px;}
+  .sheet h2{font-size:17px; margin:0 0 14px; font-weight:600;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; background:#171410; border:1px solid var(--border); color:var(--text);
+    padding:10px 11px; border-radius:8px; font-size:15px; font-family:'Inter',sans-serif;
+  }
+  .field textarea{resize:vertical; min-height:50px;}
+  .hint{font-size:11px; color:var(--text-faint); margin-top:4px;}
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+  .price-row{display:flex; gap:8px;}
+  .price-row input{flex:1;}
+  .currency-toggle{display:flex; gap:4px;}
+  .cur-opt{
+    width:42px; display:flex; align-items:center; justify-content:center; border-radius:8px;
+    border:1.5px solid var(--border); color:var(--text-dim); font-weight:700; font-size:15px; cursor:pointer;
+  }
+  .cur-opt.sel{color:#fff;}
+  .status-grid{display:flex; flex-wrap:wrap; gap:6px;}
+  .status-opt{
+    padding:7px 12px; border-radius:8px; border:1.5px solid var(--border); font-size:12.5px;
+    cursor:pointer; color:var(--text-dim); font-weight:600;
+  }
+  .status-opt.sel{color:#fff;}
+
+  .sheet-actions{display:flex; gap:10px; margin-top:16px;}
+  .btn{flex:1; padding:12px; border-radius:9px; border:none; font-size:14.5px; font-weight:600; cursor:pointer;}
+  .btn-primary{background:var(--rust); color:#fff;}
+  .btn-primary:active{background:var(--rust-hi);}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text-dim);}
+  .btn-danger{background:transparent; border:1px solid var(--danger); color:var(--danger);}
+  .btn-danger.confirm{background:var(--danger); color:#fff;}
+
+  .loading{padding:80px 20px; text-align:center; color:var(--text-faint);}
+
+  .save-error{display:none; color:var(--danger); font-size:12px; margin-top:10px; text-align:center; line-height:1.4;}
+
+  .toast{
+    position:fixed; left:16px; right:16px; bottom:90px; z-index:50;
+    background:var(--bg-card-hi); border:1px solid var(--border-hi); color:var(--text);
+    padding:11px 14px; border-radius:9px; font-size:13px; text-align:center;
+    opacity:0; transform:translateY(8px); pointer-events:none; transition:opacity .2s, transform .2s;
+    box-shadow:0 8px 20px rgba(0,0,0,0.4);
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+  .toast.error{border-color:var(--danger); color:#f0b3ab;}
+
+  .menu{
+    position:fixed; top:60px; right:16px; z-index:35; background:var(--bg-card-hi);
+    border:1px solid var(--border-hi); border-radius:10px; overflow:hidden; display:none;
+    min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .menu.show{display:block;}
+  .menu-item{padding:12px 14px; font-size:13.5px; color:var(--text-dim); cursor:pointer; border-bottom:1px solid var(--border);}
+  .menu-item:last-child{border-bottom:none;}
+  .menu-item.danger{color:var(--danger);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-row">
+    <h1>Гараж<span>.</span> Запчасти</h1>
+    <div style="display:flex; gap:8px;">
+      <div class="icon-btn" id="menuBtn">⋮</div>
+    </div>
+  </div>
+  <div class="project-row" id="projectRow"></div>
+  <div class="stats-row">
+    <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Деталей</div></div>
+    <div class="stat"><div class="n" id="statPct">0%</div><div class="l">Установлено</div></div>
+    <div class="stat"><div class="n" id="statSpentUSD">$0</div><div class="l">Потрачено</div></div>
+    <div class="stat"><div class="n" id="statSpentEUR">€0</div><div class="l">Потрачено</div></div>
+  </div>
+  <div class="gauge" id="gauge"></div>
+</header>
+
+<div class="filters" id="filters"></div>
+<div class="searchwrap"><input type="text" id="search" placeholder="Поиск по названию, номеру, категории…"></div>
+
+<main id="list"></main>
+
+<div class="toast" id="toast"></div>
+
+<button class="fab" id="addBtn">+</button>
+
+<div class="menu" id="menu">
+  <div class="menu-item" id="copyListBtn">📋 Скопировать список проекта</div>
+  <div class="menu-item" id="csvBtn">📊 CSV этого проекта</div>
+  <div class="menu-item" id="exportBtn">⬇️ Резервная копия всего (JSON)</div>
+  <div class="menu-item" id="importBtn">⬆️ Восстановить из файла</div>
+  <div class="menu-item danger" id="clearAllBtn">Очистить проект</div>
+</div>
+<input type="file" id="importFile" accept="application/json" style="display:none;">
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 id="sheetTitle">Добавить деталь</h2>
+    <div class="field">
+      <label>Проект / мотоцикл</label>
+      <select id="f_project"></select>
+    </div>
+    <div class="field">
+      <label>Название</label>
+      <input type="text" id="f_name" placeholder="Напр. Корзина сцепления Barnett">
+    </div>
+    <div class="field">
+      <label>Группа сравнения</label>
+      <input type="text" id="f_group" placeholder="Напр. Корзина сцепления">
+      <div class="hint">Заполни одинаково у нескольких вариантов — они схлопнутся в блок сравнения с кнопкой «выбрать»</div>
+    </div>
+    <div class="field">
+      <label>Категория</label>
+      <select id="f_category"></select>
+    </div>
+    <div class="field">
+      <label>Цена</label>
+      <div class="price-row">
+        <input type="number" id="f_price" placeholder="0" inputmode="decimal">
+        <div class="currency-toggle" id="currencyToggle"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Статус</label>
+      <div class="status-grid" id="statusGrid"></div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Поставщик</label>
+        <input type="text" id="f_vendor" placeholder="Напр. Ebay / магазин">
+      </div>
+      <div class="field">
+        <label>№ детали</label>
+        <input type="text" id="f_partnum" placeholder="OEM / артикул">
+      </div>
+    </div>
+    <div class="field">
+      <label>Ссылка на товар</label>
+      <input type="url" id="f_url" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>Заметка</label>
+      <textarea id="f_notes" placeholder="Совместимость, состояние..."></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="cancelBtn">Отмена</button>
+      <button class="btn btn-primary" id="saveBtn">Сохранить</button>
+    </div>
+    <div class="save-error" id="saveError"></div>
+    <div class="sheet-actions" id="deleteRow" style="display:none;">
+      <button class="btn btn-danger" id="deleteBtn">Удалить деталь</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="projectOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2>Новый проект</h2>
+    <div class="field">
+      <label>Название (мотоцикл)</label>
+      <input type="text" id="f_projectname" placeholder="Напр. Sportster 883">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="projectCancelBtn">Отмена</button>
+      <button class="btn btn-primary" id="projectSaveBtn">Создать</button>
+    </div>
+    <div class="save-error" id="projectSaveError"></div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyY4Ka5a9Qz8TCqw0PAFyXVJdR8kDXDbbzale8Tv0PCuX0B6tqwpa9C6Qcg0w1Zp6xB/exec';
+let loadError = false;
+let lastErrorDetail = '';
+
+const CATEGORIES = [
+  'Двигатель',
+  'Трансмиссия/Привод',
+  'Топливо и выхлоп',
+  'Электрика',
+  'Рама и ходовая часть',
+  'Кузов и отделка',
+  'Органы управления',
+  'Крепёж и расходники',
+  'Прочее'
+];
+
+const STATUSES = [
+  {key:'considering', label:'Выбираю',      color:'#8a6fa8'},
+  {key:'needed',       label:'Нужно',        color:'#b23a2e'},
+  {key:'ordered',      label:'Заказано',     color:'#c99a3d'},
+  {key:'transit',      label:'В пути',       color:'#5b7c8d'},
+  {key:'received',     label:'Получено',     color:'#7d9463'},
+  {key:'installed',    label:'Установлено',  color:'#5c8a4a'},
+];
+const REJECTED = {key:'rejected', label:'Отклонено', color:'#6b6558'};
+const ALL_STATUSES = [...STATUSES, REJECTED];
+const statusMap = Object.fromEntries(ALL_STATUSES.map(s=>[s.key,s]));
+const SPENT_STATUSES = new Set(['ordered','transit','received','installed']);
+
+const CURRENCIES = [
+  {key:'USD', symbol:'$'},
+  {key:'EUR', symbol:'€'},
+];
+
+let parts = [];
+let projects = [];
+let currentProject = '';
+let filterStatus = 'all';
+let searchQuery = '';
+let editingId = null;
+let formStatus = 'needed';
+let formCurrency = 'USD';
+let deleteConfirmPending = false;
+let clearConfirmPending = false;
+let projectOverlayFromSelect = false;
+
+const $ = id => document.getElementById(id);
+
+function getProjectList(){
+  const set = new Set(projects.map(p=>p.trim()).filter(Boolean));
+  parts.forEach(p=>{ const v=(p.project||'').trim(); if(v) set.add(v); });
+  const list = [...set].sort((a,b)=>a.localeCompare(b,'ru'));
+  const hasOrphans = parts.some(p=>!((p.project||'').trim()));
+  return { list, hasOrphans };
+}
+
+function ensureCurrentProject_(){
+  const { list } = getProjectList();
+  if(!list.includes(currentProject)){
+    currentProject = list.length ? list[0] : '';
+  }
+}
+
+async function loadParts(){
+  $('list').innerHTML = '<div class="loading">Открываем гараж…</div>';
+  try{
+    const res = await fetch(SCRIPT_URL, {method:'GET'});
+    if(!res.ok){
+      let txt = '';
+      try{ txt = await res.text(); }catch(e2){}
+      throw new Error('HTTP '+res.status+(txt?': '+txt.slice(0,180):''));
+    }
+    const data = await res.json();
+    parts = Array.isArray(data.parts) ? data.parts : [];
+    projects = Array.isArray(data.projects) ? data.projects : [];
+    ensureCurrentProject_();
+    loadError = false;
+    lastErrorDetail = '';
+  }catch(e){
+    console.error('Load error', e);
+    parts = [];
+    projects = [];
+    currentProject = '';
+    loadError = true;
+    lastErrorDetail = (e && e.message) ? e.message : String(e);
+  }
+  render();
+  updateMenuLabels();
+}
+
+async function saveParts(){
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ parts, projects })
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(!data || data.ok !== true) throw new Error(data && data.error ? data.error : 'unknown response');
+    return true;
+  }catch(e){
+    console.error('Storage error', e);
+    return false;
+  }
+}
+
+function showToast(msg, isError){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>{ t.classList.remove('show'); }, 3200);
+}
+
+function fmtMoney(n, currency){
+  const c = CURRENCIES.find(x=>x.key===currency) || CURRENCIES[0];
+  return c.symbol + Number(n||0).toLocaleString('en-US');
+}
+
+function updateMenuLabels(){
+  const el = $('clearAllBtn');
+  if(el) el.textContent = `Очистить «${currentProject || 'Без проекта'}»`;
+  const copyEl = $('copyListBtn');
+  if(copyEl) copyEl.textContent = `📋 Скопировать список «${currentProject || 'Без проекта'}»`;
+  const csvEl = $('csvBtn');
+  if(csvEl) csvEl.textContent = `📊 CSV «${currentProject || 'Без проекта'}»`;
+}
+
+function buildProjectSelector(){
+  const el = $('projectRow');
+  const { list, hasOrphans } = getProjectList();
+  let html = list.map(p=>`<div class="chip project-chip ${currentProject===p?'active':''}" data-project="${escapeAttr(p)}">🏍️ ${escapeHtml(p)}</div>`).join('');
+  if(hasOrphans){
+    html += `<div class="chip project-chip ${currentProject===''?'active':''}" data-project="">Без проекта</div>`;
+  }
+  html += `<div class="chip add-chip" id="addProjectChip">+ Проект</div>`;
+  el.innerHTML = html;
+  el.querySelectorAll('.project-chip[data-project]').forEach(c=>{
+    c.addEventListener('click', ()=>{ currentProject = c.dataset.project; render(); updateMenuLabels(); });
+  });
+  const addChip = $('addProjectChip');
+  if(addChip) addChip.addEventListener('click', ()=> openProjectOverlay(false));
+}
+
+function buildFilters(){
+  const el = $('filters');
+  const all = [{key:'all', label:'Все', color:'#9c9483'}, ...ALL_STATUSES];
+  el.innerHTML = all.map(s => `<div class="chip ${filterStatus===s.key?'active':''}" data-status="${s.key}">${s.label}</div>`).join('');
+  el.querySelectorAll('.chip').forEach(c=>{
+    c.addEventListener('click', ()=>{ filterStatus = c.dataset.status; render(); });
+  });
+}
+
+function buildStatusGrid(){
+  const el = $('statusGrid');
+  el.innerHTML = ALL_STATUSES.map(s=>`
+    <div class="status-opt ${formStatus===s.key?'sel':''}" data-key="${s.key}"
+      style="border-color:${s.color}; ${formStatus===s.key?`background:${s.color};`:''}">${s.label}</div>
+  `).join('');
+  el.querySelectorAll('.status-opt').forEach(o=>{
+    o.addEventListener('click', ()=>{ formStatus = o.dataset.key; buildStatusGrid(); });
+  });
+}
+
+function buildCurrencyToggle(){
+  const el = $('currencyToggle');
+  el.innerHTML = CURRENCIES.map(c=>`
+    <div class="cur-opt ${formCurrency===c.key?'sel':''}" data-key="${c.key}"
+      style="border-color:${formCurrency===c.key?'var(--brass)':'var(--border)'}; ${formCurrency===c.key?'background:var(--brass);':''}">${c.symbol}</div>
+  `).join('');
+  el.querySelectorAll('.cur-opt').forEach(o=>{
+    o.addEventListener('click', ()=>{ formCurrency = o.dataset.key; buildCurrencyToggle(); });
+  });
+}
+
+function populateProjectSelect(){
+  const { list } = getProjectList();
+  const el = $('f_project');
+  el.innerHTML = list.map(p=>`<option value="${escapeAttr(p)}">${escapeHtml(p)}</option>`).join('')
+    + `<option value="__new__">+ Новый проект…</option>`;
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str||'';
+  return d.innerHTML;
+}
+
+function escapeAttr(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function normalizeUrl_(v){
+  if(!v) return '';
+  if(!/^https?:\/\//i.test(v)) return 'https://' + v;
+  return v;
+}
+
+function matchesFilterSearch(p){
+  if(filterStatus!=='all' && p.status!==filterStatus) return false;
+  if(searchQuery.trim()){
+    const q = searchQuery.trim().toLowerCase();
+    const hay = [(p.name||''),(p.category||''),(p.partNumber||''),(p.vendor||'')].join(' ').toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+
+function render(){
+  buildProjectSelector();
+
+  const { list: projList } = getProjectList();
+  if(projList.length === 0){
+    $('statTotal').textContent = '0';
+    $('statPct').textContent = '0%';
+    $('statSpentUSD').textContent = '$0';
+    $('statSpentEUR').textContent = '€0';
+    $('gauge').innerHTML = '';
+    buildFilters();
+    $('list').innerHTML = `<div class="empty"><div class="display">Нет проектов</div>Сначала создай мотоцикл — все детали привязываются к проекту.<button class="btn btn-primary" id="onboardAddProject">+ Создать проект</button></div>`;
+    const ob = $('onboardAddProject');
+    if(ob) ob.addEventListener('click', ()=>openProjectOverlay(false));
+    return;
+  }
+
+  const projectParts = parts.filter(p=>(p.project||'').trim()===currentProject);
+
+  const active = projectParts.filter(p=>p.status!=='rejected');
+  const total = active.length;
+  const installedCount = projectParts.filter(p=>p.status==='installed').length;
+  const pct = total ? Math.round(installedCount/total*100) : 0;
+  const spentParts = active.filter(p=>SPENT_STATUSES.has(p.status));
+  const spentUSD = spentParts.reduce((s,p)=> s + ((p.currency||'USD')==='USD' ? (Number(p.price)||0) : 0), 0);
+  const spentEUR = spentParts.reduce((s,p)=> s + ((p.currency||'USD')==='EUR' ? (Number(p.price)||0) : 0), 0);
+
+  $('statTotal').textContent = total;
+  $('statPct').textContent = pct + '%';
+  $('statSpentUSD').textContent = fmtMoney(spentUSD,'USD');
+  $('statSpentEUR').textContent = fmtMoney(spentEUR,'EUR');
+
+  const gauge = $('gauge');
+  if(total===0){ gauge.innerHTML=''; }
+  else{
+    gauge.innerHTML = STATUSES.map(s=>{
+      const cnt = active.filter(p=>p.status===s.key).length;
+      const w = (cnt/total*100);
+      return w>0 ? `<div style="width:${w}%; background:${s.color};"></div>` : '';
+    }).join('');
+  }
+
+  buildFilters();
+
+  const groups = {};
+  projectParts.forEach(p=>{
+    const g = (p.compareGroup||'').trim();
+    if(g){ (groups[g] = groups[g]||[]).push(p); }
+  });
+  const clusterNames = Object.keys(groups).filter(g=>groups[g].length>=2);
+  const clusteredIds = new Set();
+  clusterNames.forEach(g=> groups[g].forEach(p=>clusteredIds.add(p.id)));
+  const clustersToShow = clusterNames.filter(g=> groups[g].some(matchesFilterSearch));
+
+  let individual = projectParts.filter(p=> !clusteredIds.has(p.id) && matchesFilterSearch(p));
+  individual = individual.slice().sort((a,b)=> (b.dateUpdated||0) - (a.dateUpdated||0));
+
+  const listEl = $('list');
+
+  if(individual.length===0 && clustersToShow.length===0){
+    if(loadError){
+      listEl.innerHTML = `<div class="empty"><div class="display">Не загрузилось</div>Не удалось получить данные из таблицы.<div class="mono" style="font-size:10.5px; color:var(--text-faint); margin-top:8px; word-break:break-all;">${escapeHtml(lastErrorDetail)}</div><button class="btn btn-ghost" id="retryLoadBtn" style="margin-top:14px; max-width:160px; margin-left:auto; margin-right:auto;">Повторить</button></div>`;
+      const rb = document.getElementById('retryLoadBtn');
+      if(rb) rb.addEventListener('click', loadParts);
+      return;
+    }
+    listEl.innerHTML = `<div class="empty"><div class="display">Пусто</div>Добавь первую деталь кнопкой «+»</div>`;
+    return;
+  }
+
+  let html = '';
+
+  clustersToShow.forEach(g=>{
+    const members = groups[g].slice().sort((a,b)=> (b.dateUpdated||0)-(a.dateUpdated||0));
+    html += `<div class="cluster"><div class="cluster-head">🔀 <span>${escapeHtml(g)}</span><span class="cluster-count">${members.length} варианта</span></div>`;
+    members.forEach(p=>{
+      const st = statusMap[p.status] || STATUSES[1];
+      html += `
+      <div class="candidate ${p.status==='rejected'?'rejected':''}" data-id="${p.id}">
+        <div class="candidate-top">
+          <div class="candidate-name">${escapeHtml(p.name)}</div>
+          <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${st.color}; border-color:${st.color};">${st.label}</div>
+        </div>
+        <div class="candidate-meta">
+          ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
+          ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
+          ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
+        </div>
+        <div class="candidate-bottom">
+          <div>${p.price ? `<span class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</span>` : ''}</div>
+          ${p.status==='considering' ? `<button class="pick-btn" data-pick="${p.id}">Выбрать эту</button>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  individual.forEach(p=>{
+    const st = statusMap[p.status] || STATUSES[1];
+    html += `
+    <div class="card ${p.status==='rejected'?'rejected':''}" data-id="${p.id}">
+      <div class="card-top">
+        <div>
+          <div class="card-name">${escapeHtml(p.name)}</div>
+          <div class="card-cat">${escapeHtml(p.category||'Прочее')}</div>
+        </div>
+        <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${st.color}; border-color:${st.color};">${st.label}</div>
+      </div>
+      <div class="card-bottom">
+        <div class="card-meta">
+          ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
+          ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
+          ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
+        </div>
+        ${p.price ? `<div class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</div>`:''}
+      </div>
+      ${p.notes ? `<div class="card-notes">${escapeHtml(p.notes)}</div>`:''}
+    </div>`;
+  });
+
+  listEl.innerHTML = html;
+
+  listEl.querySelectorAll('.card, .candidate').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.stamp-toggle') || e.target.closest('.pick-btn') || e.target.closest('.url-link')) return;
+      openEdit(card.dataset.id);
+    });
+  });
+  listEl.querySelectorAll('.stamp-toggle').forEach(st=>{
+    st.addEventListener('click', (e)=>{ e.stopPropagation(); cycleStatus(st.dataset.id); });
+  });
+  listEl.querySelectorAll('.pick-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); pickWinner(btn.dataset.pick); });
+  });
+}
+
+function cycleStatus(id){
+  const p = parts.find(x=>x.id===id);
+  if(!p) return;
+  const idx = STATUSES.findIndex(s=>s.key===p.status);
+  p.status = STATUSES[(idx+1)%STATUSES.length].key;
+  p.dateUpdated = Date.now();
+  saveParts();
+  render();
+}
+
+function pickWinner(id){
+  const winner = parts.find(x=>x.id===id);
+  if(!winner) return;
+  const grp = (winner.compareGroup||'').trim();
+  winner.status = 'needed';
+  winner.dateUpdated = Date.now();
+  if(grp){
+    parts.forEach(p=>{
+      if(p.id!==winner.id && (p.compareGroup||'').trim()===grp && p.status==='considering' && (p.project||'').trim()===(winner.project||'').trim()){
+        p.status = 'rejected';
+        p.dateUpdated = Date.now();
+      }
+    });
+  }
+  saveParts();
+  render();
+}
+
+function openAdd(){
+  const { list } = getProjectList();
+  if(list.length===0){ openProjectOverlay(false); return; }
+  editingId = null;
+  formStatus = 'considering';
+  formCurrency = 'USD';
+  $('sheetTitle').textContent = 'Добавить деталь';
+  populateProjectSelect();
+  $('f_project').value = (currentProject && list.includes(currentProject)) ? currentProject : list[0];
+  $('f_name').value=''; $('f_group').value=''; $('f_price').value=''; $('f_vendor').value='';
+  $('f_partnum').value=''; $('f_url').value=''; $('f_notes').value='';
+  $('f_category').value = CATEGORIES[0];
+  $('deleteRow').style.display = 'none';
+  deleteConfirmPending = false;
+  $('saveError').style.display = 'none';
+  buildStatusGrid();
+  buildCurrencyToggle();
+  $('overlay').classList.add('show');
+}
+
+function openEdit(id){
+  const p = parts.find(x=>x.id===id);
+  if(!p) return;
+  editingId = id;
+  formStatus = p.status;
+  formCurrency = p.currency || 'USD';
+  $('sheetTitle').textContent = 'Изменить деталь';
+  populateProjectSelect();
+  const { list } = getProjectList();
+  $('f_project').value = p.project && list.includes(p.project) ? p.project : (list[0]||'');
+  $('f_name').value = p.name||'';
+  $('f_group').value = p.compareGroup||'';
+  $('f_vendor').value = p.vendor||'';
+  $('f_partnum').value = p.partNumber||'';
+  $('f_url').value = p.url||'';
+  $('f_notes').value = p.notes||'';
+  $('f_price').value = p.price||'';
+  $('f_category').value = p.category || CATEGORIES[0];
+  $('deleteRow').style.display = 'flex';
+  deleteConfirmPending = false;
+  $('saveError').style.display = 'none';
+  $('deleteBtn').textContent = 'Удалить деталь';
+  $('deleteBtn').classList.remove('confirm');
+  buildStatusGrid();
+  buildCurrencyToggle();
+  $('overlay').classList.add('show');
+}
+
+function closeSheet(){ $('overlay').classList.remove('show'); }
+
+async function saveForm(){
+  const name = $('f_name').value.trim();
+  if(!name){ $('f_name').focus(); return; }
+  const projectVal = $('f_project').value;
+  if(!projectVal || projectVal==='__new__'){ $('f_project').focus(); return; }
+  const data = {
+    name,
+    project: projectVal,
+    compareGroup: $('f_group').value.trim(),
+    category: $('f_category').value,
+    price: $('f_price').value ? Number($('f_price').value) : null,
+    currency: formCurrency,
+    vendor: $('f_vendor').value.trim(),
+    partNumber: $('f_partnum').value.trim(),
+    url: normalizeUrl_($('f_url').value.trim()),
+    notes: $('f_notes').value.trim(),
+    status: formStatus,
+    dateUpdated: Date.now(),
+  };
+  let addedId = null;
+  if(editingId){
+    const idx = parts.findIndex(x=>x.id===editingId);
+    if(idx>-1) parts[idx] = {...parts[idx], ...data};
+  }else{
+    addedId = (crypto.randomUUID ? crypto.randomUUID() : 'id-'+Date.now()+Math.random());
+    data.id = addedId;
+    data.dateAdded = Date.now();
+    parts.push(data);
+  }
+
+  $('saveBtn').disabled = true;
+  $('saveBtn').textContent = 'Сохраняю…';
+  $('saveError').style.display = 'none';
+  const ok = await saveParts();
+  $('saveBtn').disabled = false;
+  $('saveBtn').textContent = 'Сохранить';
+
+  if(ok){
+    currentProject = projectVal;
+    closeSheet();
+    render();
+    updateMenuLabels();
+  }else{
+    if(addedId){ editingId = addedId; $('deleteRow').style.display = 'flex'; $('sheetTitle').textContent = 'Изменить деталь'; }
+    $('saveError').style.display = 'block';
+    $('saveError').textContent = '⚠ Не сохранилось на сервере (временный сбой). Данные остались в форме — нажми «Сохранить» ещё раз.';
+    render();
+  }
+}
+
+async function deletePart(){
+  if(!deleteConfirmPending){
+    deleteConfirmPending = true;
+    $('deleteBtn').textContent = 'Точно удалить? Нажми ещё раз';
+    $('deleteBtn').classList.add('confirm');
+    return;
+  }
+  const backup = parts;
+  parts = parts.filter(x=>x.id!==editingId);
+  $('deleteBtn').disabled = true;
+  const ok = await saveParts();
+  $('deleteBtn').disabled = false;
+  if(ok){
+    closeSheet();
+    render();
+  }else{
+    parts = backup;
+    deleteConfirmPending = false;
+    $('deleteBtn').textContent = 'Удалить деталь';
+    $('deleteBtn').classList.remove('confirm');
+    $('saveError').style.display = 'block';
+    $('saveError').textContent = '⚠ Не удалось удалить — временный сбой сервера. Попробуй ещё раз.';
+  }
+}
+
+async function clearAll(){
+  if(!clearConfirmPending){
+    clearConfirmPending = true;
+    $('clearAllBtn').textContent = 'Точно очистить? Нажми ещё раз';
+    setTimeout(()=>{ clearConfirmPending=false; updateMenuLabels(); }, 4000);
+    return;
+  }
+  const backup = parts;
+  parts = parts.filter(p=>(p.project||'').trim()!==currentProject);
+  const ok = await saveParts();
+  clearConfirmPending = false;
+  if(ok){
+    $('menu').classList.remove('show');
+    render();
+    updateMenuLabels();
+  }else{
+    parts = backup;
+    updateMenuLabels();
+    showToast('Не удалось очистить — временный сбой сервера. Попробуй ещё раз.', true);
+  }
+}
+
+function copyList(){
+  const projectParts = parts.filter(p=>(p.project||'').trim()===currentProject);
+  const lines = projectParts.map(p=>{
+    const st = statusMap[p.status]?.label || p.status;
+    return `• ${p.name} [${st}]${p.category?` — ${p.category}`:''}${p.price?` — ${fmtMoney(Number(p.price), p.currency||'USD')}`:''}${p.partNumber?` — #${p.partNumber}`:''}`;
+  }).join('\n');
+  const text = `${currentProject||'Без проекта'} — список запчастей (${projectParts.length}):\n${lines}`;
+  try{
+    navigator.clipboard.writeText(text).then(()=>{
+      showToast('Список скопирован');
+    }).catch(()=>{ fallbackCopy(text); });
+  }catch(e){ fallbackCopy(text); }
+  $('menu').classList.remove('show');
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+function toCsvField(v){
+  const s = (v===null||v===undefined) ? '' : String(v);
+  if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+
+function exportCsv(){
+  const projectParts = parts.filter(p=>(p.project||'').trim()===currentProject);
+  const headers = ['Название','Группа сравнения','Категория','Статус','Цена','Валюта','Поставщик','№ детали','Ссылка','Заметка','Добавлено','Обновлено'];
+  const rows = projectParts.map(p=>{
+    const st = statusMap[p.status] ? statusMap[p.status].label : p.status;
+    return [
+      p.name, p.compareGroup||'', p.category||'', st,
+      (p.price===null||p.price===undefined)?'':p.price, p.currency||'USD',
+      p.vendor||'', p.partNumber||'', p.url||'', p.notes||'',
+      p.dateAdded ? new Date(p.dateAdded).toLocaleDateString('ru-RU') : '',
+      p.dateUpdated ? new Date(p.dateUpdated).toLocaleDateString('ru-RU') : ''
+    ];
+  });
+  const csv = [headers, ...rows].map(r=>r.map(toCsvField).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  const slug = (currentProject||'bez-proekta').toLowerCase().replace(/[^a-z0-9а-яё]+/gi,'-');
+  a.href = url;
+  a.download = `parts-${slug}-${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  $('menu').classList.remove('show');
+}
+
+function exportBackup(){
+  try{
+    const data = JSON.stringify({ parts, projects }, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `garage-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){ console.error('Export error', e); }
+  $('menu').classList.remove('show');
+}
+
+function triggerImport(){
+  $('menu').classList.remove('show');
+  $('importFile').click();
+}
+
+function mergeImported(dataParts, dataProjects){
+  dataParts.forEach(imp=>{
+    if(!imp || !imp.id || !imp.name) return;
+    const idx = parts.findIndex(p=>p.id===imp.id);
+    if(idx===-1){ parts.push(imp); }
+    else if((imp.dateUpdated||0) > (parts[idx].dateUpdated||0)){ parts[idx] = imp; }
+  });
+  (dataProjects||[]).forEach(name=>{
+    const n = (name||'').trim();
+    if(n && !projects.some(p=>p.trim().toLowerCase()===n.toLowerCase())) projects.push(n);
+  });
+  dataParts.forEach(imp=>{
+    const n = (imp.project||'').trim();
+    if(n && !projects.some(p=>p.trim().toLowerCase()===n.toLowerCase())) projects.push(n);
+  });
+}
+
+async function handleImportFile(e){
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  const backupParts = parts;
+  const backupProjects = projects;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    let incomingParts, incomingProjects;
+    if(Array.isArray(data)){
+      incomingParts = data; incomingProjects = [];
+    }else if(data && Array.isArray(data.parts)){
+      incomingParts = data.parts; incomingProjects = Array.isArray(data.projects) ? data.projects : [];
+    }else{
+      throw new Error('format');
+    }
+    mergeImported(incomingParts, incomingProjects);
+    const ok = await saveParts();
+    if(!ok){
+      parts = backupParts; projects = backupProjects;
+      showToast('Сервер не подтвердил сохранение — попробуй ещё раз.', true);
+    }else{
+      ensureCurrentProject_();
+      render();
+      updateMenuLabels();
+      showToast(`Восстановлено записей: ${incomingParts.length}`);
+    }
+  }catch(err){
+    parts = backupParts; projects = backupProjects;
+    showToast('Не удалось прочитать файл резервной копии.', true);
+  }
+}
+
+function openProjectOverlay(fromSelect){
+  projectOverlayFromSelect = !!fromSelect;
+  $('f_projectname').value = '';
+  $('projectSaveError').style.display = 'none';
+  $('projectOverlay').classList.add('show');
+}
+
+function closeProjectOverlay(){
+  $('projectOverlay').classList.remove('show');
+  if(projectOverlayFromSelect && $('f_project')){
+    $('f_project').value = currentProject;
+  }
+}
+
+async function saveProjectOverlay(){
+  const name = $('f_projectname').value.trim();
+  if(!name){ $('f_projectname').focus(); return; }
+  const exists = projects.some(p=>p.trim().toLowerCase()===name.toLowerCase());
+  if(!exists) projects.push(name);
+
+  $('projectSaveBtn').disabled = true;
+  $('projectSaveBtn').textContent = 'Сохраняю…';
+  $('projectSaveError').style.display = 'none';
+  const ok = await saveParts();
+  $('projectSaveBtn').disabled = false;
+  $('projectSaveBtn').textContent = 'Создать';
+
+  if(ok){
+    if(!projectOverlayFromSelect){
+      currentProject = name;
+    }
+    $('projectOverlay').classList.remove('show');
+    if(projectOverlayFromSelect){
+      populateProjectSelect();
+      $('f_project').value = name;
+    }
+    render();
+    updateMenuLabels();
+  }else{
+    if(!exists) projects.pop();
+    $('projectSaveError').style.display = 'block';
+    $('projectSaveError').textContent = '⚠ Не сохранилось на сервере — попробуй ещё раз.';
+  }
+}
+
+CATEGORIES.forEach(c=>{
+  const opt = document.createElement('option');
+  opt.value = c; opt.textContent = c;
+  $('f_category').appendChild(opt);
+});
+
+$('addBtn').addEventListener('click', openAdd);
+$('cancelBtn').addEventListener('click', closeSheet);
+$('saveBtn').addEventListener('click', saveForm);
+$('deleteBtn').addEventListener('click', deletePart);
+$('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeSheet(); });
+$('search').addEventListener('input', (e)=>{ searchQuery = e.target.value; render(); });
+$('menuBtn').addEventListener('click', ()=> $('menu').classList.toggle('show'));
+$('copyListBtn').addEventListener('click', copyList);
+$('csvBtn').addEventListener('click', exportCsv);
+$('exportBtn').addEventListener('click', exportBackup);
+$('importBtn').addEventListener('click', triggerImport);
+$('importFile').addEventListener('change', handleImportFile);
+$('clearAllBtn').addEventListener('click', clearAll);
+$('f_project').addEventListener('change', ()=>{
+  if($('f_project').value === '__new__') openProjectOverlay(true);
+});
+$('projectCancelBtn').addEventListener('click', closeProjectOverlay);
+$('projectSaveBtn').addEventListener('click', saveProjectOverlay);
+$('projectOverlay').addEventListener('click', (e)=>{ if(e.target.id==='projectOverlay') closeProjectOverlay(); });
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#menu') && !e.target.closest('#menuBtn')){
+    $('menu').classList.remove('show');
+  }
+});
+
+loadParts();
+</script>
+</body>
+</html>
