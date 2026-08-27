@@ -186,6 +186,12 @@
   .card:active{background:var(--bg-card-hi);}
   .card.rejected{opacity:0.5;}
   .card.rejected .card-name{text-decoration:line-through;}
+  .card-row{display:flex; gap:12px; align-items:flex-start;}
+  .card-main{flex:1; min-width:0;}
+  .card-thumb{
+    width:56px; height:56px; border-radius:8px; object-fit:cover; flex:0 0 auto;
+    border:1px solid var(--border-hi); background:var(--bg-card-hi);
+  }
   .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
   .card-name{font-size:15px; font-weight:600; color:var(--text); line-height:1.3;}
   .card-cat{font-size:11px; color:var(--text-faint); margin-top:2px; text-transform:uppercase; letter-spacing:0.4px;}
@@ -213,6 +219,8 @@
   .candidate:active{background:var(--bg-card-hi);}
   .candidate.rejected{opacity:0.5;}
   .candidate.rejected .candidate-name{text-decoration:line-through;}
+  .candidate-row{display:flex; gap:10px; align-items:flex-start;}
+  .candidate-main{flex:1; min-width:0;}
   .candidate-top{display:flex; justify-content:space-between; gap:8px; align-items:flex-start;}
   .candidate-name{font-size:14px; font-weight:600;}
   .candidate-meta{font-size:11.5px; color:var(--text-dim); margin-top:3px; display:flex; gap:8px; flex-wrap:wrap;}
@@ -399,6 +407,10 @@
     <div class="field">
       <label>Ссылка на товар</label>
       <input type="url" id="f_url" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>Фото (ссылка на картинку)</label>
+      <input type="url" id="f_image" placeholder="https://...jpg">
     </div>
     <div class="field">
       <label>Заметка</label>
@@ -787,23 +799,33 @@ function matchesFilterSearch(p){
 
 let dataLoadedOk = false;
 
+function thumbHtml(p){
+  if(!p.image) return '';
+  return `<img class="card-thumb" src="${escapeAttr(p.image)}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+}
+
 function candidateHtml(p){
   const st = statusMap[p.status] || STATUSES[1];
   const sc = statusColor(p.status);
   return `
       <div class="candidate ${p.status==='rejected'?'rejected':''}" data-id="${p.id}">
-        <div class="candidate-top">
-          <div class="candidate-name">${escapeHtml(p.name)}</div>
-          <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${sc}; border-color:${sc};">${st.label}</div>
-        </div>
-        <div class="candidate-meta">
-          ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
-          ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
-          ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
-        </div>
-        <div class="candidate-bottom">
-          <div>${p.price ? `<span class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</span>` : ''}</div>
-          ${p.status==='considering' ? `<button class="pick-btn" data-pick="${p.id}">Выбрать эту</button>` : ''}
+        <div class="candidate-row">
+          ${thumbHtml(p)}
+          <div class="candidate-main">
+            <div class="candidate-top">
+              <div class="candidate-name">${escapeHtml(p.name)}</div>
+              <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${sc}; border-color:${sc};">${st.label}</div>
+            </div>
+            <div class="candidate-meta">
+              ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
+              ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
+              ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
+            </div>
+            <div class="candidate-bottom">
+              <div>${p.price ? `<span class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</span>` : ''}</div>
+              ${p.status==='considering' ? `<button class="pick-btn" data-pick="${p.id}">Выбрать эту</button>` : ''}
+            </div>
+          </div>
         </div>
       </div>`;
 }
@@ -830,22 +852,27 @@ function cardHtml(p){
   const sc = statusColor(p.status);
   return `
     <div class="card ${p.status==='rejected'?'rejected':''}" data-id="${p.id}">
-      <div class="card-top">
-        <div>
-          <div class="card-name">${escapeHtml(p.name)}</div>
-          <div class="card-cat">${escapeHtml(p.category||'Прочее')}</div>
+      <div class="card-row">
+        ${thumbHtml(p)}
+        <div class="card-main">
+          <div class="card-top">
+            <div>
+              <div class="card-name">${escapeHtml(p.name)}</div>
+              <div class="card-cat">${escapeHtml(p.category||'Прочее')}</div>
+            </div>
+            <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${sc}; border-color:${sc};">${st.label}</div>
+          </div>
+          <div class="card-bottom">
+            <div class="card-meta">
+              ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
+              ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
+              ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
+            </div>
+            ${p.price ? `<div class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</div>`:''}
+          </div>
+          ${p.notes ? `<div class="card-notes">${escapeHtml(p.notes)}</div>`:''}
         </div>
-        <div class="stamp stamp-toggle" data-id="${p.id}" style="color:${sc}; border-color:${sc};">${st.label}</div>
       </div>
-      <div class="card-bottom">
-        <div class="card-meta">
-          ${p.vendor ? `<span>${escapeHtml(p.vendor)}</span>`:''}
-          ${p.partNumber ? `<span class="mono">#${escapeHtml(p.partNumber)}</span>`:''}
-          ${p.url ? `<a class="url-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">🔗 Ссылка</a>`:''}
-        </div>
-        ${p.price ? `<div class="card-price">${fmtMoney(Number(p.price), p.currency||'USD')}</div>`:''}
-      </div>
-      ${p.notes ? `<div class="card-notes">${escapeHtml(p.notes)}</div>`:''}
     </div>`;
 }
 
@@ -1097,7 +1124,7 @@ function openAdd(){
   populateGroupSuggestions();
   $('f_project').value = (currentProject && list.includes(currentProject)) ? currentProject : list[0];
   $('f_name').value=''; $('f_group').value=''; $('f_price').value=''; $('f_vendor').value='';
-  $('f_partnum').value=''; $('f_url').value=''; $('f_notes').value='';
+  $('f_partnum').value=''; $('f_url').value=''; $('f_image').value=''; $('f_notes').value='';
   $('f_category').value = '';
   $('deleteRow').style.display = 'none';
   deleteConfirmPending = false;
@@ -1123,6 +1150,7 @@ function openEdit(id){
   $('f_vendor').value = p.vendor||'';
   $('f_partnum').value = p.partNumber||'';
   $('f_url').value = p.url||'';
+  $('f_image').value = p.image||'';
   $('f_notes').value = p.notes||'';
   $('f_price').value = p.price||'';
   $('f_category').value = p.category || '';
@@ -1153,6 +1181,7 @@ async function saveForm(){
     vendor: $('f_vendor').value.trim(),
     partNumber: $('f_partnum').value.trim(),
     url: normalizeUrl_($('f_url').value.trim()),
+    image: normalizeUrl_($('f_image').value.trim()),
     notes: $('f_notes').value.trim(),
     status: formStatus,
     dateUpdated: Date.now(),
@@ -1269,13 +1298,13 @@ function toCsvField(v){
 
 function exportCsv(){
   const projectParts = parts.filter(p=>(p.project||'').trim()===currentProject);
-  const headers = ['Название','Группа сравнения','Категория','Статус','Цена','Валюта','Поставщик','№ детали','Ссылка','Заметка','Добавлено','Обновлено'];
+  const headers = ['Название','Группа сравнения','Категория','Статус','Цена','Валюта','Поставщик','№ детали','Ссылка','Фото','Заметка','Добавлено','Обновлено'];
   const rows = projectParts.map(p=>{
     const st = statusMap[p.status] ? statusMap[p.status].label : p.status;
     return [
       p.name, p.compareGroup||'', p.category||'', st,
       (p.price===null||p.price===undefined)?'':p.price, p.currency||'USD',
-      p.vendor||'', p.partNumber||'', p.url||'', p.notes||'',
+      p.vendor||'', p.partNumber||'', p.url||'', p.image||'', p.notes||'',
       p.dateAdded ? new Date(p.dateAdded).toLocaleDateString('ru-RU') : '',
       p.dateUpdated ? new Date(p.dateUpdated).toLocaleDateString('ru-RU') : ''
     ];
